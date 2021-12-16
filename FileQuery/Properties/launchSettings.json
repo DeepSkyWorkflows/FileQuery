@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "FileQuery": {
+      "commandName": "Project",
+      "commandLineArgs": "\"e:/raw/dslr\" "
+    }
+  }
+}

@@ -1,0 +1,12 @@
+integrate auto-releases
+time db build
+look into db cache
+store in sql and allow "real" sql?
+select and order by
+scope (cd/ls)
+updates: name, extension, and move
+add column designation to right
+output capabilities (CSV, etc.)
+fits and xisf support (ser?)
+launch - send to program
+image viewer "display"

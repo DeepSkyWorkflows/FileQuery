@@ -114,7 +114,7 @@ namespace FileQueryDatabase.Commands
         private void ShowHelp(string command)
         {
             var commandText = commands
-                .Where(c => c.CommandText.StartsWith(command, StringComparison.InvariantCultureIgnoreCase))
+                .Where(c => c.HelpName.StartsWith(command, StringComparison.InvariantCultureIgnoreCase))
                 .FirstOrDefault();
 
             if (commandText == null)

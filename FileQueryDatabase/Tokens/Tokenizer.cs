@@ -24,6 +24,11 @@ namespace FileQueryDatabase.Tokens
             // set up the result
             var result = new TokenPayload { Command = command.Trim() };
 
+            if (cmd.Length == 0)
+            {
+                return result;
+            }
+
             // tracks the text of the current token
             var currentToken = new List<char>();
 

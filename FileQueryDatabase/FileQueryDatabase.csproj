@@ -5,38 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="external\alglib318hpc_net2.dll" />
-  </ItemGroup>
- 
-  <ItemGroup>
-    <Resource Include="external\alglib318hpc_net2.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="MetadataExtractor" Version="2.7.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="alglib318hpc_net2">
-      <HintPath>.\external\alglib318hpc_net2.dll</HintPath>
-    </Reference>
-    <Reference Include="JPFITS">
-      <HintPath>.\external\JPFITS.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="external\JPChart.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="external\JPFITS.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="external\JPFITS.pdb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <Folder Include="Console\" />
   </ItemGroup>
   
 </Project>

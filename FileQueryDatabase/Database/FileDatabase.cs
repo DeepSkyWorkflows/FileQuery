@@ -51,7 +51,7 @@ namespace FileQueryDatabase.Database
             }
 
             this.dir = dir;
-            Root = new DirectoryInstance(dir);
+            Root = new DirectoryInstance(serviceProvider, null, dir);
             CurrentDirectory = Root;
             Root.ParseDirectory();
             ConsoleManager.ShowInfo(null);
@@ -123,22 +123,20 @@ namespace FileQueryDatabase.Database
 
             foreach (var property in properties)
             {
-                var sample = Root.Descendants.Where(fn => fn[property] != null && fn[property].Value != null)
+                var sample = Root.Descendants.Where(fn => fn[property].Value != null)
                     .First()[property];
 
-                if (!(sample is null) && !(sample.Value is null))
+                if (!(sample.Value is null))
                 {
                     if (property.IndexOf('.') < 0)
                     {
-                        var prop = sample.Value.GetType().AsExtendedProperty();
-                        prop.Name = property;
-                        Columns.Add(null, property, sample.Value.GetType().AsExtendedProperty());
+                        var prop = sample.Value.GetType().AsExtendedProperty(property);
+                        Columns.Add(null, property, sample.Value.GetType().AsExtendedProperty(property));
                     }
                     else
                     {
                         var parts = property.Split('.');
-                        var prop = sample.Value.GetType().AsExtendedProperty();
-                        prop.Name = property;
+                        var prop = sample.Value.GetType().AsExtendedProperty(property);
                         Columns.Add(parts[0], parts[1], prop);
                     }
                 }

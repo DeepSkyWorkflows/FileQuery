@@ -28,9 +28,14 @@ namespace FileQueryDatabase.Database
         public int Level { get; set; } = 0;
 
         /// <summary>
-        /// Gets or sets the parent directory.
+        /// Gets the parent directory id.
         /// </summary>
-        public string ParentId { get; protected set; } = string.Empty;
+        public string ParentId => Parent?.Id;
+
+        /// <summary>
+        /// Gets or sets the parent directory node.
+        /// </summary>
+        public FileNode Parent { get; protected set; } = null;
 
         /// <summary>
         /// Access the property.
@@ -71,11 +76,5 @@ namespace FileQueryDatabase.Database
         /// <returns>A value indicating whether the other object is a <see cref="FileNode"/> with the same path.</returns>
         public override bool Equals(object obj) =>
             obj is FileNode fn && fn.Id == Id;
-
-        /// <summary>
-        /// String representation.
-        /// </summary>
-        /// <returns>The type and path.</returns>
-        public override string ToString() => $"{GetType().Name}: {Id}";
     }
 }

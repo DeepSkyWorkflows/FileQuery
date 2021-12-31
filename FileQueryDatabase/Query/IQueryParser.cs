@@ -17,7 +17,8 @@ namespace FileQueryDatabase.Query
         /// </summary>
         /// <param name="command">The user command.</param>
         /// <param name="db">The <see cref="FileDatabase"/> instance.</param>
+        /// <param name="add">A value indicating whether the filter should be added to the current one.</param>
         /// <returns>A compiled predicate to filter based on user input.</returns>
-        Expression<Func<FileNode, bool>> Parse(string command, FileDatabase db);
+        Expression<Func<FileNode, bool>> Parse(string command, FileDatabase db, bool add);
     }
 }

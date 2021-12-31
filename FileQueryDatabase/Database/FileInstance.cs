@@ -2,11 +2,10 @@
 // Licensed under the MIT License. See LICENSE in the repository root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
-using MetadataExtractor;
+using FileQueryDatabase.Decoders;
+using FileQueryDatabase.Services;
 
 namespace FileQueryDatabase.Database
 {
@@ -16,30 +15,49 @@ namespace FileQueryDatabase.Database
     public class FileInstance : FileNode
     {
         /// <summary>
-        /// Cache for extensions that don't have metadata.
-        /// </summary>
-        private static readonly HashSet<string> NoMeta = new ();
-
-        /// <summary>
         /// Lock for access to the no meta cache.
         /// </summary>
-        private static readonly object Mutex = new object();
+        private static readonly object Mutex = new ();
+
+        private readonly IFileDecoder[] decoders;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileInstance"/> class.
         /// </summary>
+        /// <param name="sp">Service provider.</param>
+        /// <param name="parent">The parent directory.</param>
         /// <param name="file">The full path to the file.</param>
         /// <param name="level">The level in the current hierarchy.</param>
-        public FileInstance(string file, int level = 0)
+        public FileInstance(IFileQueryServiceProvider sp, DirectoryInstance parent, string file, int level = 0)
         {
             if (string.IsNullOrWhiteSpace(file))
             {
                 throw new ArgumentNullException(nameof(file));
             }
 
+            decoders = sp.ResolveService<IFileDecoder[]>();
+
+            Parent = parent;
             Id = file;
             Level = level;
             ParseFile();
+        }
+
+        /// <summary>
+        /// String representation.
+        /// </summary>
+        /// <returns>The type and path.</returns>
+        public override string ToString()
+        {
+            var parts = new[]
+            {
+                this[nameof(FileInfo.Name)].ValueToString,
+                this[nameof(FileInfo.Length)].ToLengthInBytes(),
+                this[nameof(FileInfo.CreationTimeUtc)].ToLocalDateAndTime(),
+                this[nameof(FileInfo.LastWriteTimeUtc)].ToLocalDateAndTime(),
+            };
+
+            return string.Join('\t', parts);
         }
 
         private void ParseFile()
@@ -51,77 +69,24 @@ namespace FileQueryDatabase.Database
 
             var info = new FileInfo(Id);
 
-            var fileProperties = new Dictionary<string, ExtendedProperty>
+            foreach (var decoder in decoders)
             {
-                { nameof(FileInfo.FullName), info.FullName.ToLowerInvariant().AsExtendedProperty(nameof(FileInfo.FullName)) },
-                { nameof(FileInfo.Name),  info.Name.ToLowerInvariant().AsExtendedProperty(nameof(FileInfo.Name)) },
-                { nameof(FileInfo.Length), info.Length.AsExtendedProperty(nameof(FileInfo.Length)) },
-                { nameof(FileInfo.Extension), info.Extension.ToLowerInvariant().AsExtendedProperty(nameof(FileInfo.Extension)) },
-                { nameof(FileInfo.CreationTimeUtc), info.CreationTimeUtc.AsExtendedProperty(nameof(FileInfo.CreationTimeUtc)) },
-                { nameof(FileInfo.LastAccessTimeUtc), info.LastAccessTimeUtc.AsExtendedProperty(nameof(FileInfo.LastAccessTimeUtc)) },
-                { nameof(FileInfo.LastWriteTimeUtc), info.LastWriteTimeUtc.AsExtendedProperty(nameof(FileInfo.LastWriteTimeUtc)) },
-                { nameof(FileInfo.DirectoryName), info.DirectoryName.ToLowerInvariant().AsExtendedProperty(nameof(FileInfo.DirectoryName)) },
-            };
-
-            foreach (var (key, value) in fileProperties)
-            {
-                Add(key, value);
-            }
-
-            ParentId = info.DirectoryName;
-
-            IReadOnlyList<MetadataExtractor.Directory> meta = null;
-
-            var ext = info.Extension.Trim().ToLowerInvariant();
-
-            if (!NoMeta.Contains(ext) && !Globals.FitsExt.Any(f => f == ext))
-            {
-                try
-                {
-                    meta = ImageMetadataReader.ReadMetadata(Id);
-                }
-                catch (ImageProcessingException)
-                {
-                }
-                catch (BadImageFormatException)
-                {
-                    if (!NoMeta.Contains(ext))
+                decoder.DecodeFile(
+                    info,
+                    (key, val) => Add(key, val),
+                    key => this[key],
+                    action =>
                     {
                         Monitor.Enter(Mutex);
-                        NoMeta.Add(ext);
-                        Monitor.Exit(Mutex);
-                    }
-                }
-            }
-
-            if (meta != null)
-            {
-                foreach (var dir in meta)
-                {
-                    foreach (var tag in dir.Tags)
-                    {
-                        if (tag.Name.Contains("unknown", StringComparison.InvariantCultureIgnoreCase))
+                        try
                         {
-                            continue;
+                            action();
                         }
-
-                        var key = $"{dir.Name}.{tag.Name}";
-                        var test = this[key];
-                        if (test == null || (string.IsNullOrWhiteSpace(test.Name) && test.Value == null))
+                        finally
                         {
-                            Add(key, dir.GetObject(tag.Type).AsExtendedProperty(tag.Name));
+                            Monitor.Exit(Mutex);
                         }
-                    }
-                }
-            }
-
-            if (Globals.FitsExt.Any(f => f == ext))
-            {
-                var image = new JPFITS.FITSImage(Id, true);
-                foreach (var name in image.Header.GetAllKeyNames())
-                {
-                    var value = image.Header.GetKeyValue(name);
-                }
+                    });
             }
         }
     }

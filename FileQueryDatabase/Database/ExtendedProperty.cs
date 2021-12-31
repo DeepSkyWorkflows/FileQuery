@@ -2,15 +2,13 @@
 // Licensed under the MIT License. See LICENSE in the repository root for license information.
 
 using System;
-using System.Text;
-using MetadataExtractor;
 
 namespace FileQueryDatabase.Database
 {
     /// <summary>
     /// Manual boxing implementation with metadata about a value.
     /// </summary>
-    public class ExtendedProperty : IEquatable<ExtendedProperty>, IComparable<ExtendedProperty>
+    public struct ExtendedProperty : IEquatable<ExtendedProperty>, IComparable<ExtendedProperty>
     {
         /// <summary>
         /// The value.
@@ -25,6 +23,11 @@ namespace FileQueryDatabase.Database
             Name = string.Empty,
             Value = null,
         };
+
+        /// <summary>
+        /// Gets a value indicating whether this instance represents null.
+        /// </summary>
+        public bool IsNull => Name == string.Empty && Value is null;
 
         /// <summary>
         /// Gets or sets the name of the property.
@@ -43,17 +46,12 @@ namespace FileQueryDatabase.Database
             set
             {
                 val = value;
+
                 if (val != null && val.GetType() == typeof(string))
                 {
                     LowerInvariant = ((string)val).Trim().ToLowerInvariant();
                     ValueToString = (string)val;
                     return;
-                }
-
-                if (val != null && val is StringValue sv)
-                {
-                    ValueToString = (sv.Encoding ?? Encoding.UTF8).GetString(sv.Bytes);
-                    LowerInvariant = ValueToString.ToLowerInvariant();
                 }
 
                 LowerInvariant = null;
@@ -85,8 +83,7 @@ namespace FileQueryDatabase.Database
         /// <param name="left">Left property.</param>
         /// <param name="right">Right property.</param>
         /// <returns>A value indicating whether the two are equal.</returns>
-        public static bool operator ==(ExtendedProperty left, ExtendedProperty right) =>
-            !(left is null) && !(right is null) && left.Equals(right);
+        public static bool operator ==(ExtendedProperty left, ExtendedProperty right) => left.Equals(right);
 
         /// <summary>
         /// Not equal operator implementation.
@@ -104,7 +101,7 @@ namespace FileQueryDatabase.Database
         /// <param name="right">Right property.</param>
         /// <returns>A value indicating whether the left is less than the right.</returns>
         public static bool operator <(ExtendedProperty left, ExtendedProperty right) =>
-            !(left is null) && !(right is null) && left.CompareTo(right) == -1;
+            left.CompareTo(right) == -1;
 
         /// <summary>
         /// Less than or equal to operator implementation.
@@ -114,11 +111,6 @@ namespace FileQueryDatabase.Database
         /// <returns>A value indicating whether the left is less than or equal to the right.</returns>
         public static bool operator <=(ExtendedProperty left, ExtendedProperty right)
         {
-            if (left is null || right is null)
-            {
-                return false;
-            }
-
             var val = left.CompareTo(right);
             return val == -1 || val == 0;
         }
@@ -130,7 +122,7 @@ namespace FileQueryDatabase.Database
         /// <param name="right">Right property.</param>
         /// <returns>A value indicating whether the left is greater than the right.</returns>
         public static bool operator >(ExtendedProperty left, ExtendedProperty right) =>
-            !(left is null) && !(right is null) && left.CompareTo(right) > 0;
+            left.CompareTo(right) > 0;
 
         /// <summary>
         /// Greater than or equal to operator implementation.
@@ -139,7 +131,7 @@ namespace FileQueryDatabase.Database
         /// <param name="right">Right property.</param>
         /// <returns>A value indicating whether the left is greater than or equal to the right.</returns>
         public static bool operator >=(ExtendedProperty left, ExtendedProperty right) =>
-                !(left is null) && !(right is null) && left.CompareTo(right) >= 0;
+                left.CompareTo(right) >= 0;
 
         /// <summary>
         /// Implement comparisons.
@@ -148,7 +140,8 @@ namespace FileQueryDatabase.Database
         /// <returns>A value indicating the result of the comparison.</returns>
         public int CompareTo(ExtendedProperty other)
         {
-            if (other == null || other.Value == null)
+            // nulls never match. Use IsNull to check.
+            if (Value == null || other.Value == null)
             {
                 return -2;
             }
@@ -236,11 +229,6 @@ namespace FileQueryDatabase.Database
         /// <returns>A value indicating whether they are equal.</returns>
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-
             if (obj is ExtendedProperty ep)
             {
                 return ((IEquatable<ExtendedProperty>)this).Equals(ep);
@@ -254,11 +242,8 @@ namespace FileQueryDatabase.Database
         /// </summary>
         /// <param name="tgt">Target as string.</param>
         /// <returns>The string value.</returns>
-        private static string AsString(object tgt)
-        {
-            return tgt is string str ? str :
-                (tgt is StringValue sv ? sv.Encoding.GetString(sv.Bytes) : null);
-        }
+        private static string AsString(object tgt) =>
+            tgt is string str ? str : null;
 
         /// <summary>
         /// Implement string operations.
@@ -269,7 +254,7 @@ namespace FileQueryDatabase.Database
         /// <returns>A value indicating whether the pattern matched.</returns>
         private bool StringOp(ExtendedProperty pat, bool contains = false, bool startsWith = false)
         {
-            if (Value == null || pat == null || pat.Value == null)
+            if (Value == null || pat.Value == null)
             {
                 return false;
             }

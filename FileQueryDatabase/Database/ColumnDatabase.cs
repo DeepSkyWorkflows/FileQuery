@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Jeremy Likness. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the repository root for license information.
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -61,10 +62,11 @@ namespace FileQueryDatabase.Database
                         var newKey = $"{propMap[key][0]}.{key}".ToLowerInvariant();
                         return properties.ContainsKey(newKey) ?
                             properties[newKey] :
-                            null;
+                            ExtendedProperty.NULL;
                     }
 
-                    throw new KeyNotFoundException(string.Join(", ", propMap[key]));
+                    throw new KeyNotFoundException($"Property '{key}' exists in multiple directories: " + string.Join(", ", propMap[key]) +
+                        $"{Environment.NewLine}Please specify the desired directory like this: \"{propMap[key][0]}.{key}\" ");
                 }
 
                 // starts with the property
@@ -81,7 +83,7 @@ namespace FileQueryDatabase.Database
                         var newKey = $"{propMap[candidate][0]}.{candidate}".ToLowerInvariant();
                         return properties.ContainsKey(newKey) ?
                             properties[newKey] :
-                            null;
+                            ExtendedProperty.NULL;
                     }
 
                     throw new KeyNotFoundException(string.Join(", ", propMap[candidate]));
@@ -89,7 +91,7 @@ namespace FileQueryDatabase.Database
 
                 if (!keySet.Any())
                 {
-                    return null;
+                    return ExtendedProperty.NULL;
                 }
 
                 throw new KeyNotFoundException(keySet.Count() <= 5 ?

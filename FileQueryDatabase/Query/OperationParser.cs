@@ -144,7 +144,8 @@ namespace FileQueryDatabase.Query
         private static Operation ParseColumn(string token, FileDatabase db)
         {
             var column = db.Columns[token];
-            if (column == null || column?.Value == null)
+
+            if (column.Value == null)
             {
                 throw new ArgumentException($"Invalid property name: {token}");
             }

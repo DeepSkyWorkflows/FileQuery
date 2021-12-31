@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using FileQueryDatabase.Database;
+using FileQueryDatabase.Decoders;
 using FileQueryDatabase.Query;
 using FileQueryDatabase.Services;
 using FileQueryDatabase.Tokens;
@@ -39,6 +40,13 @@ namespace FileQuery
             serviceProvider.ConfigureService<IQueryParser>(sp => new QueryParser(
                 sp.ResolveService<ITokenizer>(),
                 sp.ResolveService<IOperationParser>()));
+            var decoders = new IFileDecoder[]
+            {
+                new FileInfoDecoder(),
+                new ExifDecoder(),
+                new FitsDecoder(),
+            };
+            serviceProvider.ConfigureService(sp => decoders);
 
             var db = new FileDatabase(dir, serviceProvider);
             db.Run();

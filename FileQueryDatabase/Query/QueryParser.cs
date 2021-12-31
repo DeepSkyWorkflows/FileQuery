@@ -18,12 +18,6 @@ namespace FileQueryDatabase.Query
     {
         private readonly ITokenizer tokenizer;
         private readonly IOperationParser operationParser;
-        private readonly PropertyInfo indexer = (from p in typeof(FileNode).GetDefaultMembers().OfType<PropertyInfo>()
-                                                 where p.PropertyType == typeof(ExtendedProperty)
-                                                 let q = p.GetIndexParameters()
-                                                 where q.Length == 1 && q[0].ParameterType == typeof(string)
-                                                 select p).Single();
-        private HashSet<string> requiredColumns;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="QueryParser"/> class.
@@ -45,25 +39,17 @@ namespace FileQueryDatabase.Query
         /// </summary>
         /// <param name="command">The command to parse.</param>
         /// <param name="db">The <see cref="FileDatabase"/> instance to use.</param>
+        /// <param name="add">A value indicating whether the filter should be added to the existing one.</param>
         /// <returns>The parsed expression.</returns>
-        public Expression<Func<FileNode, bool>> Parse(string command, FileDatabase db)
+        public Expression<Func<FileNode, bool>> Parse(string command, FileDatabase db, bool add)
         {
-            requiredColumns = new ();
             var tokens = tokenizer.Tokenize(command);
             var operation = operationParser.ParseTokens(tokens, db);
             ConsoleManager.ShowMessage(operation.ToString());
             var context = new ParserContext(db);
             var expression = ParseOperation(operation, context);
-            foreach (var col in requiredColumns)
-            {
-                var requiredColumn = RequiredColumn(context.FileNodeParameter, col);
-                var newExpression = Expression.AndAlso(requiredColumn, expression)
-                    .WithTag("&&");
 
-                expression = newExpression;
-            }
-
-            if (db.Filter != null)
+            if (add && db.Filter != null)
             {
                 var existingFilter = Expression.Invoke(db.Filter, context.FileNodeParameter);
                 var newExpression = Expression.AndAlso(existingFilter, expression);
@@ -71,19 +57,6 @@ namespace FileQueryDatabase.Query
             }
 
             return Expression.Lambda<Func<FileNode, bool>>(expression, context.FileNodeParameter);
-        }
-
-        private Expression RequiredColumn(ParameterExpression fileNode, string col)
-        {
-            var nullExp = Expression.Constant(null).WithTag("NULL");
-            IndexExpression indexExpr = Expression.Property(fileNode, indexer, Expression.Constant(col))
-                .WithTag($"fileNode[{col}]");
-            var notNull = Expression.NotEqual(nullExp, indexExpr).WithTag("!=");
-            Expression<Func<ExtendedProperty, object>> getValue = ep => ep.Value;
-            var alsoNotNull = Expression.NotEqual(nullExp, getValue.WithTag($"\"{col}\""))
-                .WithTag("!=");
-            var both = Expression.AndAlso(notNull, alsoNotNull).WithTag("&&");
-            return both;
         }
 
         private Expression ParseOperation(Operation operation, ParserContext ctx)
@@ -106,9 +79,8 @@ namespace FileQueryDatabase.Query
 
                 case Operations.ColumnName:
                     var column = operation.Value.ToString();
-                    requiredColumns.Add(column);
                     Expression<Func<FileNode, ExtendedProperty>> colSource =
-                        node => node[column] ?? ExtendedProperty.NULL;
+                        node => node[column];
                     var returnTarget = Expression.Label(typeof(ExtendedProperty));
                     var expr = Expression.Block(
                         Expression.Return(

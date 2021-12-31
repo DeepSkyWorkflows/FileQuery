@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using FileQueryDatabase.Services;
 
 namespace FileQueryDatabase.Database
 {
@@ -15,18 +16,25 @@ namespace FileQueryDatabase.Database
     /// </summary>
     public class DirectoryInstance : FileNode
     {
+        private IFileQueryServiceProvider sp;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="DirectoryInstance"/> class.
         /// </summary>
+        /// <param name="sp">Query service provider.</param>
+        /// <param name="parent">The parent directory.</param>
         /// <param name="directory">Full path of the directory.</param>
         /// <param name="level">Level from root.</param>
-        public DirectoryInstance(string directory, int level = 0)
+        public DirectoryInstance(IFileQueryServiceProvider sp, DirectoryInstance parent, string directory, int level = 0)
         {
+            this.sp = sp;
+
             if (string.IsNullOrWhiteSpace(directory))
             {
                 throw new ArgumentNullException(directory);
             }
 
+            Parent = parent;
             Level = level;
             Id = directory.ToLowerInvariant();
         }
@@ -69,7 +77,6 @@ namespace FileQueryDatabase.Database
             if (dirInfo.Parent != null)
             {
                 fileProperties.Add(nameof(FileInfo.DirectoryName), dirInfo.Parent.FullName.AsExtendedProperty(nameof(FileInfo.DirectoryName)));
-                ParentId = dirInfo.Parent.FullName;
             }
 
             foreach (var (key, value) in fileProperties)
@@ -82,7 +89,7 @@ namespace FileQueryDatabase.Database
             var children = new ConcurrentBag<FileNode>();
             Parallel.ForEach(dirInfo.EnumerateDirectories(), info =>
             {
-                var childDirectory = new DirectoryInstance(info.FullName, Level + 1);
+                var childDirectory = new DirectoryInstance(sp, this, info.FullName, Level + 1);
                 children.Add(childDirectory);
                 childDirectory.ParseDirectory();
             });
@@ -91,7 +98,7 @@ namespace FileQueryDatabase.Database
             {
                 if (Array.IndexOf(Globals.SupportedExtensions, file.Extension) >= 0)
                 {
-                    var child = new FileInstance(file.FullName, Level + 1);
+                    var child = new FileInstance(sp, this, file.FullName, Level + 1);
                     children.Add(child);
                     ConsoleManager.ShowInfo(child);
                 }
@@ -107,5 +114,11 @@ namespace FileQueryDatabase.Database
                 }
             }
         }
+
+        /// <summary>
+        /// String representation.
+        /// </summary>
+        /// <returns>The type and path.</returns>
+        public override string ToString() => Id;
     }
 }
